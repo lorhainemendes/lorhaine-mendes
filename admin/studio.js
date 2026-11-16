@@ -5,7 +5,6 @@
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const REPO = { owner: 'mudtometal', repo: 'lorhaine-mendes', branch: 'main' };
 
 const LAYOUTS = {
   cover: ['Full screen', 'Fills the screen'],
@@ -28,6 +27,7 @@ const art = k => `<div class="art ${k}">${'<i></i>'.repeat(k === 'strip' ? 3 : k
 
 /* ---------- data ---------- */
 let published = await fetch('../data/projects.json', { cache: 'no-cache' }).then(r => r.json());
+const API = await fetch('../data/editor.json', { cache: 'no-cache' }).then(r => r.ok ? r.json() : {}).then(j => j.api || '').catch(() => '');
 let D = structuredClone(published);
 try { const s = JSON.parse(localStorage.getItem('lm-studio') || 'null'); if (s && s.base === JSON.stringify(published)) D = s.data; } catch {}
 const pending = {};
@@ -66,9 +66,10 @@ function writeDraft() {
 }
 function status() {
   const d = dirty(), s = $('.state');
-  s.textContent = d ? 'Preview · changes only on this computer' : 'Showing the live site';
+  s.textContent = API ? (d ? 'Unpublished changes' : 'All changes published') : (d ? 'Preview · changes only on this computer' : 'Showing the live site');
   s.classList.toggle('dirty', d);
   $('.discard').hidden = !d;
+  $('.top .pub').hidden = !API; $('.top .pub').disabled = !d;
 }
 
 /* ---------- the live slide in the middle ---------- */
@@ -588,7 +589,55 @@ addEventListener('keydown', e => {
   if (e.key === 'Backspace' || e.key === 'Delete') { e.preventDefault(); $('.panel .del')?.click(); }
 });
 
-/* ---------- preview mode: changes live in this browser only (publishing is switched off for now) ---------- */
+/* ---------- log in + publish ----------
+   The editor talks to a small publishing server (worker/publish.js). You log in with email + password;
+   the server checks it, holds the GitHub key and makes the commit. Nothing secret lives in this page.
+   With no server set in data/editor.json the editor runs in preview mode (changes stay on this computer). */
+const SKEY = 'lm-session';
+const session = () => { try { return JSON.parse(localStorage.getItem(SKEY) || 'null'); } catch { return null; } };
+async function api(path, body) {
+  const s = session();
+  const r = await fetch(API.replace(/\/$/, '') + path, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(s ? { Authorization: 'Bearer ' + s.token } : {}) }, body: JSON.stringify(body || {}) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw Object.assign(new Error(j.error || r.status), { status: r.status, body: j });
+  return j;
+}
+function showLogin(err = '') {
+  const w = $('.login'); w.hidden = false; document.body.classList.add('locked');
+  $('.lerr', w).textContent = err; setTimeout(() => $('.lem', w).focus(), 50);
+}
+$('.login form').onsubmit = async e => {
+  e.preventDefault();
+  const w = $('.login'), btn = $('button', w);
+  btn.disabled = true; btn.textContent = 'Logging in…'; $('.lerr', w).textContent = '';
+  try {
+    const j = await api('/login', { email: $('.lem', w).value, password: $('.lpw', w).value });
+    localStorage.setItem(SKEY, JSON.stringify(j));
+    w.hidden = true; document.body.classList.remove('locked'); $('.lpw', w).value = '';
+    $('.who').textContent = j.email; $('.logout').hidden = false;
+  } catch (err) { $('.lerr', w).textContent = err.status === 401 ? 'That email or password isn’t right.' : 'Couldn’t reach the server. Check your connection.'; }
+  btn.disabled = false; btn.textContent = 'Log in';
+};
+$('.logout').onclick = () => { localStorage.removeItem(SKEY); $('.logout').hidden = true; $('.who').textContent = ''; showLogin(); };
+const b64 = blob => new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result.split(',')[1]); fr.readAsDataURL(blob); });
+async function publish() {
+  const btn = $('.top .pub'); btn.disabled = true; btn.textContent = 'Publishing…';
+  try {
+    const out = clean(D), files = { 'data/projects.json': await b64(new Blob([JSON.stringify(out, null, 1)], { type: 'application/json' })) };
+    for (const b of Object.values(pending)) if (b.files) for (const [p, blob] of Object.entries(b.files)) files[p] = await b64(blob);
+    await api('/publish', { files, message: 'Editor update' });
+    published = structuredClone(out);
+    for (const b of Object.values(pending)) delete b.files;
+    localStorage.removeItem('lm-studio');
+    toast('Published. The site updates within a minute or two.');
+  } catch (err) {
+    if (err.status === 401) { localStorage.removeItem(SKEY); showLogin('Please log in again, then press Publish.'); }
+    else if (err.status === 413) toast('Too big to publish in one go. Publish a few files at a time.');
+    else toast('Couldn’t publish. Check your connection and try again.');
+  }
+  btn.textContent = 'Publish'; status();
+}
+$('.top .pub').onclick = publish;
 $('.discard').onclick = () => {
   if (!confirm('Go back to the live version? Your changes here will be cleared.')) return;
   snapshot(); D = structuredClone(published); Object.keys(pending).forEach(k => delete pending[k]);
@@ -605,3 +654,9 @@ function toast(msg, withUndo = false) {
 
 /* ---------- go ---------- */
 writeDraft(); status(); render(); fit(); go();
+if (API) {                       // editor needs a login once a publishing server is set
+  const s = session();
+  if (!s) showLogin();
+  else api('/check').then(j => { $('.who').textContent = j.email; $('.logout').hidden = false; })
+    .catch(e => { if (e.status === 401) { localStorage.removeItem(SKEY); showLogin(); } else { $('.who').textContent = s.email; $('.logout').hidden = false; } });
+}
