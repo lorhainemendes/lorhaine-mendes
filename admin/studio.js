@@ -96,7 +96,7 @@ function go() {
       back.dataset.ver = v; back.classList.remove('back'); front.classList.add('back'); front = back;
     }, t.then ? 380 : 260);
   };
-  back.src = `../?draft&credits=${cl}&v=${v}${t.hash}`;
+  back.src = `../?draft&all&credits=${cl}&v=${v}${t.hash}`;
 }
 let rT = null;
 function refresh() { ver++; clearTimeout(rT); rT = setTimeout(go, 280); }
@@ -154,9 +154,9 @@ function renderStrip() {
   $('.sl').innerHTML = p ? `${esc(p.title) || 'Untitled'}<em>${p.images.length} slide${p.images.length === 1 ? '' : 's'}</em>` : '';
   $('.dpn').textContent = p?.title || '';
   $('.slides').innerHTML = (p?.images || []).map((im, k) => `
-    <div class="sld ${k === V.k || multi.has(k) ? 'on' : ''}" draggable="true" data-k="${k}">
-      <div class="im"><img src="${thumb(p, im)}" alt="" draggable="false">${im.v ? '<span class="v">Video</span>' : ''}</div>
-      <div class="cap">${k + 1} · ${LAYOUTS[modeOf(view(im))][0]}${device === 'phone' && im.ph ? ' · phone' : ''}</div>
+    <div class="sld ${k === V.k || multi.has(k) ? 'on' : ''} ${im.hf ? 'hid' : ''}" draggable="true" data-k="${k}">
+      <div class="im"><img src="${thumb(p, im)}" alt="" draggable="false">${im.v ? '<span class="v">Video</span>' : ''}${im.hf ? '<span class="co">Credits only</span>' : ''}</div>
+      <div class="cap">${k + 1} · ${im.hf ? 'Credits only' : LAYOUTS[modeOf(view(im))][0] + (device === 'phone' && im.ph ? ' · phone' : '')}</div>
     </div>`).join('') +
     (uploading ? `<div class="upl">Adding ${uploading}…</div>` : '') +
     `<button class="addsl" title="Add photos or videos">+</button>`;
@@ -246,6 +246,8 @@ function slideHTML(p) {
     <div class="devnote"><span class="pill">${dev} layout</span>${device === 'phone'
       ? (im.ph && !many ? `<button class="link same">Use the desktop layout</button>` : '<span>Same as desktop until you change it</span>')
       : '<span>Switch to Phone at the top to set the phone layout</span>'}</div>
+    <div class="sec feed"><button class="sw feedsw ${sel.every(k => !p.images[k].hf) ? 'on' : ''}"><i></i>Show on the home page</button>
+      <p class="help">${sel.every(k => !p.images[k].hf) ? `Turn off to keep ${many ? 'them' : 'it'} out of the main slideshow. ${many ? 'They stay' : 'It stays'} in this project on the credits page.` : `Only shows in this project on the credits page, not in the main slideshow.`}</p></div>
     ${run && !many ? `<div class="note">${run} is used 3 times in a row on ${dev.toLowerCase()}. Mixing layouts keeps it from feeling repetitive.</div>` : ''}
     <div class="sec"><span class="lab">Layout</span>
       <div class="lays">${Object.entries(LAYOUTS).map(([k, [t, d]]) => {
@@ -260,7 +262,7 @@ function slideHTML(p) {
       ${pickOpen ? `<div class="unders">${bgMedia().filter(u => u.f !== im.f).map(u => `<button data-ub="${u.f}" class="${ub?.f === u.f ? 'on' : ''}" title="${esc(u.label)}${u.v ? ' · video' : ''}"><img src="${ubThumb(u)}" alt="">${u.v ? '<span class="v">Video</span>' : ''}</button>`).join('')}</div>` : ''}
       <p class="help">Upload a new photo or video, or pick one from the site. It only shows behind this slide.</p></div>
 ` : ''}
-    ${!many ? `<div class="sec"><button class="sw ${L.n && nameOk(m) ? 'on' : ''}" ${nameOk(m) ? '' : 'disabled'}><i></i>Name in the background</button><p class="help">${nameOk(m) ? `“${esc(D.backText || D.name || 'Lorhaine Mendes')}” in large type behind the picture. Move it in the box above. Looks best on a few slides only.` : 'Not with Full screen. The picture would cover it.'}</p></div>` : ''}
+    ${!many ? `<div class="sec"><button class="sw nsw ${L.n && nameOk(m) ? 'on' : ''}" ${nameOk(m) ? '' : 'disabled'}><i></i>Name in the background</button><p class="help">${nameOk(m) ? `“${esc(D.backText || D.name || 'Lorhaine Mendes')}” in large type behind the picture. Move it in the box above. Looks best on a few slides only.` : 'Not with Full screen. The picture would cover it.'}</p></div>` : ''}
     <div class="sec"><button class="danger del">${many ? `Delete ${sel.length} slides` : 'Delete slide'}</button></div>`;
 }
 /* ---------- the placement box ----------
@@ -391,7 +393,13 @@ function bindSlide(el, p) {
   $$('[data-ub]', el).forEach(b => b.onclick = () => { pickOpen = false; const u = bgMedia().find(x => x.f === b.dataset.ub); if (!u) return; edit(() => { const g = tgt(im); const { label, ...ub } = u; g.ub = ub; delete g.u; }); });
   const up = $('.upbg', el); if (up) up.onclick = () => { bgFor = im; $('.bgpick').click(); };
   const pk = $('.pickbg', el); if (pk) pk.onclick = () => { pickOpen = !pickOpen; renderPanel(); };
-  const sw = $('.sw', el); if (sw) sw.onclick = () => edit(() => { tgt(im).n = !view(im).n; });
+  const sw = $('.nsw', el); if (sw) sw.onclick = () => edit(() => { tgt(im).n = !view(im).n; });
+  const fs = $('.feedsw', el); if (fs) fs.onclick = () => {
+    const ks = [...new Set([V.k, ...multi])], hide = ks.some(k => !p.images[k].hf);
+    if (hide && p.images.filter((x, k) => !x.hf && !ks.includes(k)).length === 0) return toast('Keep at least one photo of this project on the home page.');
+    edit(() => ks.forEach(k => { if (hide) p.images[k].hf = true; else delete p.images[k].hf; }));
+    toast(hide ? (ks.length > 1 ? 'Hidden from the home page. Still on the credits page.' : 'Hidden from the home page. Still on the credits page.') : 'Back on the home page.', true);
+  };
   const same = $('.same', el); if (same) same.onclick = () => edit(() => { delete im.ph; });
   if (sel.length === 1) bindPad(el, p, im);
   bindSnapLinks(el);

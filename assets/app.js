@@ -7,8 +7,11 @@ const data = DRAFT
   : await fetch('data/projects.json', { cache: 'no-cache' }).then(r => r.json());
 const B = data._blobs || {};                 // files uploaded in the studio but not published yet
 const P = data.projects.filter(p => p.images.length);
-const FLOW = P.flatMap((p, pi) => p.images.map((im, k) => ({ p, pi, k, ...im })));
-const BYF = Object.fromEntries(FLOW.map(x => [x.f, x]));
+const ALL = P.flatMap((p, pi) => p.images.map((im, k) => ({ p, pi, k, ...im })));
+const FEED = ALL.filter(x => !x.hf);              // "credits only" photos stay out of the slideshow
+const FLOW = (DRAFT && qs.has("all")) || !FEED.length ? ALL : FEED;   // the editor preview shows every slide
+const BYF = Object.fromEntries(ALL.map(x => [x.f, x]));
+const flowAt = (pi, k) => { let i = FLOW.findIndex(x => x.pi === pi && x.k === k); if (i < 0) i = FLOW.findIndex(x => x.pi === pi && x.k > k); if (i < 0) i = FLOW.findIndex(x => x.pi === pi); return Math.max(i, 0); };
 const hi = () => innerWidth * (devicePixelRatio || 1) > 1900;
 const src = (slug, f, size) => { size = size || (hi() ? 'web' : 'md'); return B[f]?.[size] || B[f]?.md || `media/${size}/${slug}/${f}.webp`; };
 const vsrc = f => B[f]?.mp4 || `media/video/${f}.mp4`, vposter = f => B[f]?.poster || `media/video/${f}.jpg`;
@@ -83,7 +86,7 @@ function vidReady(el, url, poster) {
 }
 function underOf(L) {
   if (L.ub?.f) return { ...L.ub, p: { slug: L.ub.slug || 'bg' } };
-  return BYF[L.u] || FLOW.find(x => x.v) || null;
+  return BYF[L.u] || ALL.find(x => x.v) || null;
 }
 function underBox(L, u, vw, vh) {
   const b = coverBox(u.w, u.h, Math.min(2, Math.max(.2, L.bs ?? 1)), L.bx, L.by, vw, vh);
@@ -273,7 +276,7 @@ function renderCredits() {
     ${creditsLayout === 'strip' ? `<div class="media">${media}</div>${meta}` : `${meta}<div class="media">${media}</div>`}`;
   L.querySelector('.close').onclick = close;
   L.querySelectorAll('.media [data-k]').forEach(el => el.onclick = () => {
-    const i = FLOW.findIndex(x => x.pi === cur.pi && x.k === +el.dataset.k); g = i; lastPi = cur.pi; location.hash = hashFor(i);
+    const i = flowAt(cur.pi, +el.dataset.k); g = i; lastPi = cur.pi; location.hash = hashFor(i);
   });
   const strip = L.querySelector('.l-strip .media');
   if (strip) strip.addEventListener('wheel', e => { if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) { strip.scrollLeft += e.deltaY; e.preventDefault(); } }, { passive: false });
@@ -316,7 +319,7 @@ function route() {
     return;
   }
   const pi = P.findIndex(p => p.slug === a);
-  const i = pi < 0 ? 0 : FLOW.findIndex(x => x.pi === pi && x.k === Math.min(Math.max((+b || 1) - 1, 0), P[pi].images.length - 1));
+  const i = pi < 0 ? 0 : flowAt(pi, Math.min(Math.max((+b || 1) - 1, 0), P[pi].images.length - 1));
   if (i !== g || (!fg.getAttribute('src') && !fgv.getAttribute('src'))) show(i); else { place(FLOW[i]); setTitle(FLOW[i].p); }
 }
 addEventListener('hashchange', route);
