@@ -27,14 +27,17 @@
      "h": 2400,
      "m": "full",
      "n": false,
-     "s": 1.14
+     "s": 1.14,
+     "x": 72.9,
+     "y": 50
     },
     {
      "f": "project-05",
      "w": 2400,
      "h": 1800,
      "m": "cover",
-     "n": false
+     "n": false,
+     "hf": true
     },
     {
      "f": "project-03",
@@ -60,8 +63,7 @@
      "w": 1770,
      "h": 1327,
      "m": "cover",
-     "n": false,
-     "hf": true
+     "n": false
     }
    ]
   },
@@ -102,7 +104,8 @@
      },
      "s": 1.34,
      "x": 73.2,
-     "y": 50
+     "y": 50,
+     "hf": true
     },
     {
      "f": "safe-03",
@@ -497,7 +500,7 @@
  ],
  "creditsLayout": "strip",
  "head": {
-  "size": 41,
+  "size": 34,
   "font": "serif"
  },
  "creditsType": "dual"
