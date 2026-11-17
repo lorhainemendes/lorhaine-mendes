@@ -882,40 +882,45 @@
      "n": false,
      "ph": {
       "m": "cover"
-     }
+     },
+     "hf": true
     },
     {
      "f": "fourteen-02",
      "w": 1092,
      "h": 1360,
-     "m": "small",
+     "m": "full",
      "n": false,
-     "x": 64
+     "s": 1.2,
+     "x": 50,
+     "y": 53.8
     },
     {
      "f": "fourteen-03",
      "w": 1924,
      "h": 2400,
      "m": "full",
-     "n": false
+     "n": false,
+     "hf": true
     },
     {
      "f": "fourteen-04",
      "w": 1946,
      "h": 2400,
-     "m": "small",
+     "m": "full",
      "n": false,
-     "x": 36,
      "ph": {
       "m": "cover"
-     }
+     },
+     "s": 1.11
     },
     {
      "f": "fourteen-05",
      "w": 1946,
      "h": 2400,
      "m": "full",
-     "n": false
+     "n": false,
+     "s": 1.11
     }
    ],
    "notes": "The designer the model the photographer\nby Miguel Adrover\n\nPortraits by Martin Sabyno\n\nZaza' Art\nwww.z-a-z-a.art\n\nShe's on fa-yeh\nby Brianna Capozi\n\nAnalisa Teachworth Zero\nThe Gaylord Fine Arts, Los Angeles\n\nWomen's History Museum Vintage\n244 Canal Street 3rd Fl, New York"
