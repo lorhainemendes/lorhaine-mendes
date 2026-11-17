@@ -66,7 +66,7 @@ function writeDraft() {
 }
 function status() {
   const d = dirty(), s = $('.state');
-  s.textContent = API ? (d ? 'Unpublished changes' : 'All changes published') : (d ? 'Preview · changes only on this computer' : 'Showing the live site');
+  s.textContent = API ? '' : (d ? 'Preview only' : '');
   s.classList.toggle('dirty', d);
   $('.discard').hidden = !d;
   $('.top .pub').hidden = !API; $('.top .pub').disabled = !d;
@@ -242,13 +242,12 @@ function slideHTML(p) {
   const run = (() => { let r = 1, best = 0, s = ''; p.images.forEach((x, i) => { r = i && modeOf(view(x)) === modeOf(view(p.images[i - 1])) ? r + 1 : 1; if (r > best) { best = r; s = modeOf(view(x)); } }); return best >= 3 ? LAYOUTS[s][0] : ''; })();
   const ub = ubOf(L);
   return `
-    <div class="ph"><b>${many ? `${sel.length} slides selected` : `Slide ${V.k + 1}`}</b><span>${many ? 'changes apply to all of them' : `of ${p.images.length}${im.v ? ' · video' : ''}`}</span></div>
+    <div class="ph"><b>${many ? `${sel.length} slides selected` : `Slide ${V.k + 1}`}</b><span>${many ? '' : `of ${p.images.length}${im.v ? ' · video' : ''}`}</span></div>
     <div class="devnote"><span class="pill">${dev} layout</span>${device === 'phone'
-      ? (im.ph && !many ? `<button class="link same">Use the desktop layout</button>` : '<span>Same as desktop until you change it</span>')
-      : '<span>Switch to Phone at the top to set the phone layout</span>'}</div>
+      ? (im.ph && !many ? `<button class="link same">Use the desktop layout</button>` : '')
+      : ''}</div>
     <div class="sec feed"><button class="sw feedsw ${sel.every(k => !p.images[k].hf) ? 'on' : ''}"><i></i>Show on the home page</button>
-      <p class="help">${sel.every(k => !p.images[k].hf) ? `Turn off to keep ${many ? 'them' : 'it'} out of the main slideshow. ${many ? 'They stay' : 'It stays'} in this project on the credits page.` : `Only shows in this project on the credits page, not in the main slideshow.`}</p></div>
-    ${run && !many ? `<div class="note">${run} is used 3 times in a row on ${dev.toLowerCase()}. Mixing layouts keeps it from feeling repetitive.</div>` : ''}
+      ${sel.some(k => p.images[k].hf) ? '<p class="help">Credits page only.</p>' : ''}</div>
     <div class="sec"><span class="lab">Layout</span>
       <div class="lays">${Object.entries(LAYOUTS).map(([k, [t, d]]) => {
         const off = k === 'layer' && anyVideo;
@@ -260,9 +259,9 @@ function slideHTML(p) {
       <div class="bgcur">${ub ? `<img src="${ubThumb(ub)}" alt="">` : '<span class="nobg">Nothing yet</span>'}
         <div><button class="btn2 upbg">${bgUp ? 'Adding…' : 'Upload new'}</button><button class="btn2 pickbg">${pickOpen ? 'Hide' : 'Choose from site'}</button></div></div>
       ${pickOpen ? `<div class="unders">${bgMedia().filter(u => u.f !== im.f).map(u => `<button data-ub="${u.f}" class="${ub?.f === u.f ? 'on' : ''}" title="${esc(u.label)}${u.v ? ' · video' : ''}"><img src="${ubThumb(u)}" alt="">${u.v ? '<span class="v">Video</span>' : ''}</button>`).join('')}</div>` : ''}
-      <p class="help">Upload a new photo or video, or pick one from the site. It only shows behind this slide.</p></div>
+      </div>
 ` : ''}
-    ${!many ? `<div class="sec"><button class="sw nsw ${L.n && nameOk(m) ? 'on' : ''}" ${nameOk(m) ? '' : 'disabled'}><i></i>Name in the background</button><p class="help">${nameOk(m) ? `“${esc(D.backText || D.name || 'Lorhaine Mendes')}” in large type behind the picture. Move it in the box above. Looks best on a few slides only.` : 'Not with Full screen. The picture would cover it.'}</p></div>` : ''}
+    ${!many ? `<div class="sec"><button class="sw nsw ${L.n && nameOk(m) ? 'on' : ''}" ${nameOk(m) ? '' : 'disabled'}><i></i>Name in the background</button>${nameOk(m) ? '' : '<p class="help">Not with Full screen.</p>'}</div>` : ''}
     <div class="sec"><button class="danger del">${many ? `Delete ${sel.length} slides` : 'Delete slide'}</button></div>`;
 }
 /* ---------- the placement box ----------
@@ -282,8 +281,8 @@ function padHTML(p, im, L, m) {
       <div class="pbox ${selBg ? '' : 'act'}"><img src="${thumb(p, im)}" alt="" draggable="false"></div>
     </div>
     <div class="sizer"><span>Size</span><input type="range" min="${m === 'cover' && !selBg ? 100 : 20}" max="200" step="1" value="${sz}"><b></b></div>
-    <p class="help">${m === 'cover' ? 'Fills the screen. Make it bigger to zoom in, then drag to choose what shows.' : m === 'layer' ? 'Drag the picture or the background to move it. The slider sizes the one selected.' : 'Drag the picture to place it.'} <button class="link centre">Centre it</button> · ${snapLink()}</p>
-    ${name ? `<p class="help">Drag <b>Name</b> to move her name up, down or sideways. It stays where you put it. ${L.ny != null || L.nx != null ? '<button class="link nreset">Reset name</button>' : ''}</p>` : ''}
+    <p class="help"><button class="link centre">Centre it</button> · ${snapLink()}</p>
+    ${name ? `${L.ny != null || L.nx != null ? '<p class="help"><button class="link nreset">Reset name position</button></p>' : ''}` : ''}
   </div>`;
 }
 function bindPad(el, p, im) {
@@ -398,7 +397,7 @@ function bindSlide(el, p) {
     const ks = [...new Set([V.k, ...multi])], hide = ks.some(k => !p.images[k].hf);
     if (hide && p.images.filter((x, k) => !x.hf && !ks.includes(k)).length === 0) return toast('Keep at least one photo of this project on the home page.');
     edit(() => ks.forEach(k => { if (hide) p.images[k].hf = true; else delete p.images[k].hf; }));
-    toast(hide ? (ks.length > 1 ? 'Hidden from the home page. Still on the credits page.' : 'Hidden from the home page. Still on the credits page.') : 'Back on the home page.', true);
+    toast(hide ? 'Hidden from the home page' : 'Back on the home page', true);
   };
   const same = $('.same', el); if (same) same.onclick = () => edit(() => { delete im.ph; });
   if (sel.length === 1) bindPad(el, p, im);
@@ -430,11 +429,10 @@ function projectHTML(p) {
     <div class="sec"><span class="lab">Credits</span>
       ${(p.credits || []).map((c, i) => `<div class="cred"><input class="in" data-ci="${i}" data-f="role" value="${esc(c.role)}" placeholder="Role"><input class="in" data-ci="${i}" data-f="name" value="${esc(c.name)}" placeholder="Name"><button class="x" data-rm="${i}" title="Remove">×</button></div>`).join('')}
       <button class="addc">+ Add credit</button>
-      <p class="help">The preview shows this project’s credits page while you edit.</p>
     </div>
     <div class="sec"><span class="lab">Extra lines <em class="help" style="font-style:normal">(optional)</em></span>
       <textarea class="in" data-k="notes" rows="8" placeholder="e.g. Portraits by …&#10;Location, city">${esc(p.notes)}</textarea>
-      <p class="help">Shown next to the credits, in the typewriter font when that style is on. Leave an empty line between groups.</p></div>
+      <p class="help">Empty line starts a new group.</p></div>
     <div class="sec"><button class="danger delp">Delete project</button></div>`;
 }
 function bindProject(el, p) {
@@ -459,11 +457,11 @@ function panelInfo(el) {
       <div class="seg hfont">${[['sans', 'Simple', "'Inter Tight',sans-serif"], ['mono', 'Mono', "'IBM Plex Mono',monospace"], ['times', 'Times', "'Tinos',serif"], ['serif', 'Bodoni', "'Bodoni Moda',serif"]].map(([k, t, f]) => `<button data-hf="${k}" class="${(D.head?.font || 'sans') === k ? 'on' : ''}" style="font-family:${f};font-weight:${D.head?.bold ? 700 : 400}">${t}</button>`).join('')}</div>
       <button class="sw hbold ${D.head?.bold ? 'on' : ''}" style="margin-top:10px"><i></i>Bold</button>
       <div class="sizer"><span>Size</span><input class="hsize" type="range" min="13" max="44" step="1" value="${D.head?.size || 15}"><b>${D.head?.size || 15}px</b></div></div>
-    <div class="field"><span class="lab">Big text behind pictures</span><input class="in bt" value="${esc(D.backText || '')}" placeholder="${esc(D.name || 'Lorhaine Mendes')}"><p class="help">Leave empty to use the name above.</p></div>
+    <div class="field"><span class="lab">Big text behind pictures</span><input class="in bt" value="${esc(D.backText || '')}" placeholder="${esc(D.name || 'Lorhaine Mendes')}"></div>
     <div class="ph" style="margin-top:22px"><b>Info page</b></div>
     <div class="field"><span class="lab">Bio</span><textarea class="in bio" rows="4">${esc(D.bio)}</textarea></div>
-    <div class="field"><span class="lab">Email</span><input class="in em" type="email" value="${esc(D.email)}" placeholder="name@example.com"><p class="help">“Write something” on the Info page opens an email to this address.</p></div>
-    <div class="field"><span class="lab">Instagram</span><input class="in ig" value="${esc(D.instagram)}" placeholder="username, without @"><p class="help">Leave empty to hide the Instagram link.</p></div>`;
+    <div class="field"><span class="lab">Email</span><input class="in em" type="email" value="${esc(D.email)}" placeholder="name@example.com"></div>
+    <div class="field"><span class="lab">Instagram</span><input class="in ig" value="${esc(D.instagram)}" placeholder="username, without @"></div>`;
   const b = $('.bio', el), i = $('.ig', el), em = $('.em', el), sn = $('.sn', el), bt = $('.bt', el);
   b.onfocus = i.onfocus = em.onfocus = sn.onfocus = bt.onfocus = () => snapshot();
   const head = () => (D.head ||= {});
@@ -622,11 +620,11 @@ $('.login form').onsubmit = async e => {
     const j = await api('/login', { email: $('.lem', w).value, password: $('.lpw', w).value });
     localStorage.setItem(SKEY, JSON.stringify(j));
     w.hidden = true; document.body.classList.remove('locked'); $('.lpw', w).value = '';
-    $('.who').textContent = j.email; $('.logout').hidden = false;
+    $('.logout').hidden = false;
   } catch (err) { $('.lerr', w).textContent = err.status === 401 ? 'That email or password isn’t right.' : 'Couldn’t reach the server. Check your connection.'; }
   btn.disabled = false; btn.textContent = 'Log in';
 };
-$('.logout').onclick = () => { localStorage.removeItem(SKEY); $('.logout').hidden = true; $('.who').textContent = ''; showLogin(); };
+$('.logout').onclick = () => { localStorage.removeItem(SKEY); $('.logout').hidden = true; showLogin(); };
 const b64 = blob => new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result.split(',')[1]); fr.readAsDataURL(blob); });
 async function publish() {
   const btn = $('.top .pub'); btn.disabled = true; btn.textContent = 'Publishing…';
@@ -665,6 +663,6 @@ writeDraft(); status(); render(); fit(); go();
 if (API) {                       // editor needs a login once a publishing server is set
   const s = session();
   if (!s) showLogin();
-  else api('/check').then(j => { $('.who').textContent = j.email; $('.logout').hidden = false; })
-    .catch(e => { if (e.status === 401) { localStorage.removeItem(SKEY); showLogin(); } else { $('.who').textContent = s.email; $('.logout').hidden = false; } });
+  else api('/check').then(j => { $('.logout').hidden = false; })
+    .catch(e => { if (e.status === 401) { localStorage.removeItem(SKEY); showLogin(); } else { $('.logout').hidden = false; } });
 }
