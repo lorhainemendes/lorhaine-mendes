@@ -6,8 +6,8 @@
    Settings (Cloudflare → Worker → Settings → Variables and Secrets, all as "Secret"):
      GITHUB_TOKEN    fine-grained GitHub token with Contents: read & write on the site repo
      USERS           one login per line:  email:password
-     SESSION_SECRET  any long random text (signs the login so it can't be faked)
-   Optional (plain text):
+   Optional:
+     SESSION_SECRET  long random text that signs logins (defaults to the GitHub key)
      REPO            owner/repo   (default mudtometal/lorhaine-mendes)
      BRANCH          default main
      ORIGINS         comma-separated sites allowed to use this (default lorhainemendes.com + github.io)
@@ -34,14 +34,15 @@ export default {
     if (!allowed.includes(origin)) return json({ error: 'origin' }, 403);
 
     const path = new URL(req.url).pathname;
+    const secret = env.SESSION_SECRET || env.GITHUB_TOKEN;
     try {
       if (path === '/login') {
         const { email = '', password = '' } = await req.json();
         const user = findUser(env.USERS, email, password);
         if (!user) { await sleep(600); return json({ error: 'login' }, 401); }
-        return json({ token: await sign({ u: user, exp: Date.now() + 30 * DAY }, env.SESSION_SECRET), email: user });
+        return json({ token: await sign({ u: user, exp: Date.now() + 30 * DAY }, secret), email: user });
       }
-      const s = await verify((req.headers.get('Authorization') || '').replace(/^Bearer /, ''), env.SESSION_SECRET);
+      const s = await verify((req.headers.get('Authorization') || '').replace(/^Bearer /, ''), secret);
       if (!s) return json({ error: 'session' }, 401);
       if (path === '/check') return json({ ok: true, email: s.u });
       if (path === '/publish') {
@@ -82,7 +83,7 @@ const b64u = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\
 const unb64u = s => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
 const hmacKey = secret => crypto.subtle.importKey('raw', enc.encode(secret || ''), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign', 'verify']);
 async function sign(obj, secret) {
-  if (!secret || secret.length < 16) throw new Error('SESSION_SECRET is missing or too short');
+  if (!secret || secret.length < 16) throw new Error('GITHUB_TOKEN is not set');
   const body = b64u(enc.encode(JSON.stringify(obj)));
   return body + '.' + b64u(await crypto.subtle.sign('HMAC', await hmacKey(secret), enc.encode(body)));
 }
