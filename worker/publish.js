@@ -5,7 +5,7 @@
 
    Settings (Cloudflare → Worker → Settings → Variables and Secrets, all as "Secret"):
      GITHUB_TOKEN    fine-grained GitHub token with Contents: read & write on the site repo
-     USERS           one login per line:  email:password
+     USERS           logins, comma-separated:  a@x.com:pass1, b@y.com:pass2
    Optional:
      SESSION_SECRET  long random text that signs logins (defaults to the GitHub key)
      REPO            owner/repo   (default mudtometal/lorhaine-mendes)
@@ -69,7 +69,7 @@ function okPath(p) {
 
 function findUser(list = '', email, password) {
   email = String(email).trim().toLowerCase();
-  for (const line of String(list).split(/\r?\n/)) {
+  for (const line of String(list).split(/\r?\n|,/)) {
     const i = line.indexOf(':'); if (i < 1) continue;
     const e = line.slice(0, i).trim().toLowerCase(), p = line.slice(i + 1).trim();
     if (e === email && same(p, String(password))) return e;
