@@ -231,10 +231,20 @@ function tone() {
   const r = (stage.classList.contains('isvid') ? fgv : fg).getBoundingClientRect();
   cursor.classList.toggle('light', document.body.classList.contains('dark') || (mx > r.left && mx < r.right && my > r.top && my < r.bottom));
 }
-addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; cursor.style.transform = `translate(${mx}px,${my}px) translate(-50%,-60%)`; tone(); });
+/* the middle of the picture says "More" and opens the rest of the series (credits page) */
+let zoneA = 'next';
+function inMiddle() {
+  const r = (stage.classList.contains('isvid') ? fgv : fg).getBoundingClientRect();
+  if (!r.width) return false;
+  const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+  const w = Math.min(r.width, innerWidth) * .17, h = Math.min(r.height, innerHeight) * .22;
+  return Math.abs(mx - cx) < w && Math.abs(my - cy) < h;
+}
+function label() { cursor.textContent = inMiddle() ? 'More' : zoneA === 'prev' ? 'Prev' : 'Next'; }
+addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; cursor.style.transform = `translate(${mx}px,${my}px) translate(-50%,-60%)`; tone(); label(); });
 document.querySelectorAll('.zones i').forEach(z => {
-  z.addEventListener('mouseenter', () => { cursor.textContent = z.dataset.a === 'prev' ? 'Prev' : 'Next'; cursor.classList.toggle('on', !touch); });
-  z.addEventListener('click', () => step(z.dataset.a === 'prev' ? -1 : 1));
+  z.addEventListener('mouseenter', () => { zoneA = z.dataset.a; label(); cursor.classList.toggle('on', !touch); });
+  z.addEventListener('click', () => { if (!touch && inMiddle()) { location.hash = '#/credits'; return; } step(z.dataset.a === 'prev' ? -1 : 1); });
 });
 $('.zones').addEventListener('mouseleave', () => cursor.classList.remove('on'));
 
