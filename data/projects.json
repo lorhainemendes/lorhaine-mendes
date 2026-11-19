@@ -414,9 +414,21 @@
      "f": "fourteen-05",
      "w": 1946,
      "h": 2400,
-     "m": "full",
+     "m": "layer",
      "n": false,
-     "s": 1.11
+     "ub": {
+      "f": "fourteen-03",
+      "w": 1924,
+      "h": 2400,
+      "v": false,
+      "slug": "fourteen"
+     },
+     "bs": 0.5,
+     "bx": 25,
+     "by": 50.1,
+     "x": 73,
+     "y": 50,
+     "s": 1
     }
    ],
    "notes": ""
@@ -506,7 +518,7 @@
    "images": []
   }
  ],
- "creditsLayout": "strip",
+ "creditsLayout": "stack",
  "head": {
   "size": 34,
   "font": "serif"
